@@ -1,25 +1,4 @@
 """Module for the StreamRoles cog."""
-
-# Copyright (c) 2017-2018 Tobotimus
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-
 import asyncio
 import contextlib
 import logging
@@ -369,19 +348,14 @@ class StreamRoles(commands.Cog):
         )
 
         activity = next(
-            (
-                a
-                for a in member.activities
-                if a and a.type == discord.ActivityType.streaming
-            ),
-            None,
+            (a for a in member.activities if isinstance(a, discord.Streaming)), None,
         )
-        if not (self.DEBUG_MODE or getattr(activity, "twitch_name", None)):
+        if activity is not None and not activity.platform:
             activity = None
 
         has_role = role in member.roles
-        if activity and await self._is_allowed(member):
-            game = getattr(activity, "details", None)
+        if activity is not None and await self._is_allowed(member):
+            game = activity.game
             games = await self.conf.guild(member.guild).game_whitelist()
             if not games or game in games:
                 if not has_role:
@@ -435,14 +409,18 @@ class StreamRoles(commands.Cog):
     async def _post_alert(
         self,
         member: discord.Member,
-        activity: discord.Activity,
+        activity: discord.Streaming,
         game: Optional[str],
         channel: discord.TextChannel,
     ) -> discord.Message:
-        content = f"{chatutils.bold(member.display_name)} is now live on Twitch"
+        content = (
+            f"{chatutils.bold(member.display_name)} is now live on {activity.platform}"
+        )
         if game is not None:
             content += f", playing {chatutils.italics(str(game))}"
-        content += f":\n\n{chatutils.italics(activity.name)}\n\n{activity.url}"
+        content += (
+            f"!\n\nTitle: {chatutils.italics(activity.name)}\nURL: {activity.url}"
+        )
 
         msg = await channel.send(content)
         await self.conf.member(member).alert_messages.set_raw(

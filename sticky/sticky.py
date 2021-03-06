@@ -1,25 +1,4 @@
 """Module for the Sticky cog."""
-
-# Copyright (c) 2017-2018 Tobotimus
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-
 import asyncio
 import contextlib
 import logging
@@ -155,6 +134,13 @@ class Sticky(commands.Cog):
                     with contextlib.suppress(discord.NotFound):
                         await msg.delete()
                     return
+            else:
+                await ctx.send(
+                    f"I don't have the add_reactions permission here. "
+                    f"Use `{ctx.prefix}unsticky yes` to remove the sticky message."
+                )
+                return
+
             await settings.set(
                 # Preserve the header setting
                 {"header_enabled": await settings.header_enabled()}
@@ -164,7 +150,8 @@ class Sticky(commands.Cog):
                 await last.delete()
 
             if msg is not None:
-                await msg.delete()
+                with contextlib.suppress(discord.NotFound):
+                    await msg.delete()
             await ctx.tick()
         finally:
             self.locked_channels.remove(channel)
